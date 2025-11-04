@@ -135,6 +135,10 @@ private:
     
     // DEBUG SLIDERS - comprehensive UI controls
     bool showDebug = true;
+    bool uiSectionExpanded = false;  // Collapsed by default
+    bool audioProcessingSectionExpanded = true;  // Expanded by default
+    juce::TextButton uiSectionButton;
+    juce::TextButton audioProcessingSectionButton;
     
     // Clarity slider controls
     juce::Slider debugClaritySliderX, debugClaritySliderY;

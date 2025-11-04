@@ -39,7 +39,7 @@ void ClaritizerAudioProcessorEditor::generateNoiseTextures()
 {
     juce::Random random;
     
-    // Create single noise frame (no animation)
+    // Create single static noise frame (fine grain)
     // Use ARGB format to support transparency properly
     noiseFrame = juce::Image(juce::Image::PixelFormat::ARGB, 400, 600, true);
     
@@ -168,6 +168,23 @@ void ClaritizerAudioProcessorEditor::setupGui()
         addAndMakeVisible(debugViewport);
         debugViewport.setViewedComponent(&debugContainer, false);
         debugViewport.setScrollBarsShown(true, false);
+        
+        // Setup collapsible section buttons
+        debugContainer.addAndMakeVisible(uiSectionButton);
+        uiSectionButton.setButtonText(uiSectionExpanded ? "[-] UI" : "[+] UI");
+        uiSectionButton.onClick = [this] {
+            uiSectionExpanded = !uiSectionExpanded;
+            uiSectionButton.setButtonText(uiSectionExpanded ? "[-] UI" : "[+] UI");
+            resized();
+        };
+        
+        debugContainer.addAndMakeVisible(audioProcessingSectionButton);
+        audioProcessingSectionButton.setButtonText(audioProcessingSectionExpanded ? "[-] Audio Processing" : "[+] Audio Processing");
+        audioProcessingSectionButton.onClick = [this] {
+            audioProcessingSectionExpanded = !audioProcessingSectionExpanded;
+            audioProcessingSectionButton.setButtonText(audioProcessingSectionExpanded ? "[-] Audio Processing" : "[+] Audio Processing");
+            resized();
+        };
         
         auto setupDebugSlider = [this](juce::Slider& slider, juce::Label& label,
                                        const juce::String& name, float min, float max, float defaultVal)
@@ -333,7 +350,7 @@ void ClaritizerAudioProcessorEditor::modeButtonClicked(int mode)
 
 void ClaritizerAudioProcessorEditor::timerCallback()
 {
-    // Timer callback removed - noise is static now
+    // No animation needed
 }
 
 void ClaritizerAudioProcessorEditor::paint(juce::Graphics& g)
@@ -341,13 +358,12 @@ void ClaritizerAudioProcessorEditor::paint(juce::Graphics& g)
     int pluginWidth = showDebug ? (int)debugPluginWidth.getValue() : 350;
     auto pluginBounds = getLocalBounds().withWidth(pluginWidth);
     
-    // LAYER 1: Black background ONLY for plugin area
-    g.setColour(juce::Colours::black);
-    g.fillRect(pluginBounds);
+    // LAYER 0: Fill entire component background with black to prevent any gaps
+    g.fillAll(juce::Colours::black);
     
     // Draw outer border with gradient (white to mode color)
     float borderThickness = showDebug ? debugOuterBorderThickness.getValue() : 8.0f;
-    auto borderBounds = pluginBounds.toFloat().reduced(0, 0);
+    auto borderBounds = pluginBounds.toFloat();
     juce::ColourGradient borderGradient(
         juce::Colours::white, borderBounds.getX(), borderBounds.getY(),
         modeColors[currentMode], borderBounds.getX(), borderBounds.getBottom(),
@@ -403,7 +419,7 @@ void ClaritizerAudioProcessorEditor::paint(juce::Graphics& g)
         g.fillRect(viewportBounds);
     }
     
-    // FINAL LAYER: Draw noise texture on top of EVERYTHING
+    // FINAL LAYER: Draw static fine-grain noise texture on top of EVERYTHING
     drawNoiseTexture(g, pluginBounds);
 }
 
@@ -568,77 +584,142 @@ void ClaritizerAudioProcessorEditor::resized()
         int debugStartX = pluginWidth + 20;
         debugViewport.setBounds(debugStartX, 0, 500, getHeight());
         
-        int debugY = 20;
+        int debugY = 10;
         int labelW = 110;
         int sliderW = 120;
         int spacing = 28;
-        int columnSpacing = 250;
-        int totalWidth = columnSpacing * 2 + 20;
+        int sectionButtonHeight = 30;
         
-        auto layoutDebug = [&](juce::Slider& slider, juce::Label& label, int column)
+        // UI Section Button
+        uiSectionButton.setBounds(10, debugY, 460, sectionButtonHeight);
+        debugY += sectionButtonHeight + 10;
+        
+        // UI Section sliders (only if expanded)
+        if (uiSectionExpanded)
         {
-            int xOffset = column * columnSpacing;
-            label.setBounds(10 + xOffset, debugY, labelW, 20);
-            slider.setBounds(10 + xOffset + labelW, debugY, sliderW, 20);
-            debugY += spacing;
-            
-            // Reset to top for new column
-            if (debugY > 550 && column == 0)
+            auto layoutDebug = [&](juce::Slider& slider, juce::Label& label)
             {
-                debugY = 20;
-            }
-        };
+                slider.setVisible(true);
+                label.setVisible(true);
+                label.setBounds(20, debugY, labelW, 20);
+                slider.setBounds(20 + labelW, debugY, sliderW, 20);
+                debugY += spacing;
+            };
+            
+            // All UI control sliders
+            layoutDebug(debugClaritySliderX, debugLabel1);
+            layoutDebug(debugClaritySliderY, debugLabel2);
+            layoutDebug(debugClarityTrackWidth, debugLabel3);
+            layoutDebug(debugClarityTrackHeight, debugLabel4);
+            layoutDebug(debugClarityThumbW, debugLabel5);
+            layoutDebug(debugClarityThumbH, debugLabel6);
+            layoutDebug(debugTimeKnobX, debugLabel7);
+            layoutDebug(debugTimeKnobY, debugLabel8);
+            layoutDebug(debugToneKnobX, debugLabel9);
+            layoutDebug(debugToneKnobY, debugLabel10);
+            layoutDebug(debugKnobRadius, debugLabel11);
+            layoutDebug(debugKnobSpacing, debugLabel12);
+            layoutDebug(debugKnobBorderThickness, debugLabel13);
+            layoutDebug(debugKnobArcThickness, debugLabel14);
+            layoutDebug(debugTimeLabelX, debugLabel15);
+            layoutDebug(debugTimeLabelY, debugLabel16);
+            layoutDebug(debugTimeLabelW, debugLabel17);
+            layoutDebug(debugTimeLabelH, debugLabel18);
+            layoutDebug(debugToneLabelX, debugLabel19);
+            layoutDebug(debugToneLabelY, debugLabel20);
+            layoutDebug(debugToneLabelW, debugLabel21);
+            layoutDebug(debugToneLabelH, debugLabel22);
+            layoutDebug(debugLabelFontSize, debugLabel23);
+            layoutDebug(debugButtonX, debugLabel24);
+            layoutDebug(debugButtonY, debugLabel25);
+            layoutDebug(debugButtonW, debugLabel26);
+            layoutDebug(debugButtonH, debugLabel27);
+            layoutDebug(debugButtonSpacing, debugLabel28);
+            layoutDebug(debugButtonBorderThickness, debugLabel29);
+            layoutDebug(debugButtonFontSize, debugLabel30);
+            layoutDebug(debugTitleX, debugLabel31);
+            layoutDebug(debugTitleY, debugLabel32);
+            layoutDebug(debugTitleW, debugLabel33);
+            layoutDebug(debugTitleH, debugLabel34);
+            layoutDebug(debugTitleFontSize, debugLabel35);
+            layoutDebug(debugOuterBorderThickness, debugLabel36);
+            layoutDebug(debugPluginWidth, debugLabel37);
+            layoutDebug(debugNoiseOpacity, debugLabel38);
+            layoutDebug(debugNoisePixelSize, debugLabel39);
+            layoutDebug(debugKnobTickLength, debugLabel40);
+            layoutDebug(debugKnobTickThickness, debugLabel41);
+            layoutDebug(debugKnobTickStartRadius, debugLabel42);
+            
+            debugY += 10; // Extra space before next section
+        }
+        else
+        {
+            // Hide all UI sliders when collapsed
+            auto hideDebug = [](juce::Slider& slider, juce::Label& label)
+            {
+                slider.setVisible(false);
+                label.setVisible(false);
+            };
+            
+            hideDebug(debugClaritySliderX, debugLabel1);
+            hideDebug(debugClaritySliderY, debugLabel2);
+            hideDebug(debugClarityTrackWidth, debugLabel3);
+            hideDebug(debugClarityTrackHeight, debugLabel4);
+            hideDebug(debugClarityThumbW, debugLabel5);
+            hideDebug(debugClarityThumbH, debugLabel6);
+            hideDebug(debugTimeKnobX, debugLabel7);
+            hideDebug(debugTimeKnobY, debugLabel8);
+            hideDebug(debugToneKnobX, debugLabel9);
+            hideDebug(debugToneKnobY, debugLabel10);
+            hideDebug(debugKnobRadius, debugLabel11);
+            hideDebug(debugKnobSpacing, debugLabel12);
+            hideDebug(debugKnobBorderThickness, debugLabel13);
+            hideDebug(debugKnobArcThickness, debugLabel14);
+            hideDebug(debugTimeLabelX, debugLabel15);
+            hideDebug(debugTimeLabelY, debugLabel16);
+            hideDebug(debugTimeLabelW, debugLabel17);
+            hideDebug(debugTimeLabelH, debugLabel18);
+            hideDebug(debugToneLabelX, debugLabel19);
+            hideDebug(debugToneLabelY, debugLabel20);
+            hideDebug(debugToneLabelW, debugLabel21);
+            hideDebug(debugToneLabelH, debugLabel22);
+            hideDebug(debugLabelFontSize, debugLabel23);
+            hideDebug(debugButtonX, debugLabel24);
+            hideDebug(debugButtonY, debugLabel25);
+            hideDebug(debugButtonW, debugLabel26);
+            hideDebug(debugButtonH, debugLabel27);
+            hideDebug(debugButtonSpacing, debugLabel28);
+            hideDebug(debugButtonBorderThickness, debugLabel29);
+            hideDebug(debugButtonFontSize, debugLabel30);
+            hideDebug(debugTitleX, debugLabel31);
+            hideDebug(debugTitleY, debugLabel32);
+            hideDebug(debugTitleW, debugLabel33);
+            hideDebug(debugTitleH, debugLabel34);
+            hideDebug(debugTitleFontSize, debugLabel35);
+            hideDebug(debugOuterBorderThickness, debugLabel36);
+            hideDebug(debugPluginWidth, debugLabel37);
+            hideDebug(debugNoiseOpacity, debugLabel38);
+            hideDebug(debugNoisePixelSize, debugLabel39);
+            hideDebug(debugKnobTickLength, debugLabel40);
+            hideDebug(debugKnobTickThickness, debugLabel41);
+            hideDebug(debugKnobTickStartRadius, debugLabel42);
+        }
         
-        // Column 1
-        int col = 0;
-        layoutDebug(debugClaritySliderX, debugLabel1, col);
-        layoutDebug(debugClaritySliderY, debugLabel2, col);
-        layoutDebug(debugClarityTrackWidth, debugLabel3, col);
-        layoutDebug(debugClarityTrackHeight, debugLabel4, col);
-        layoutDebug(debugClarityThumbW, debugLabel5, col);
-        layoutDebug(debugClarityThumbH, debugLabel6, col);
-        layoutDebug(debugTimeKnobX, debugLabel7, col);
-        layoutDebug(debugTimeKnobY, debugLabel8, col);
-        layoutDebug(debugToneKnobX, debugLabel9, col);
-        layoutDebug(debugToneKnobY, debugLabel10, col);
-        layoutDebug(debugKnobRadius, debugLabel11, col);
-        layoutDebug(debugKnobSpacing, debugLabel12, col);
-        layoutDebug(debugKnobBorderThickness, debugLabel13, col);
-        layoutDebug(debugKnobArcThickness, debugLabel14, col);
-        layoutDebug(debugTimeLabelX, debugLabel15, col);
-        layoutDebug(debugTimeLabelY, debugLabel16, col);
-        layoutDebug(debugTimeLabelW, debugLabel17, col);
-        layoutDebug(debugTimeLabelH, debugLabel18, col);
-        layoutDebug(debugToneLabelX, debugLabel19, col);
+        // Audio Processing Section Button
+        audioProcessingSectionButton.setBounds(10, debugY, 460, sectionButtonHeight);
+        debugY += sectionButtonHeight + 10;
         
-        // Column 2
-        col = 1;
-        debugY = 20;
-        layoutDebug(debugToneLabelY, debugLabel20, col);
-        layoutDebug(debugToneLabelW, debugLabel21, col);
-        layoutDebug(debugToneLabelH, debugLabel22, col);
-        layoutDebug(debugLabelFontSize, debugLabel23, col);
-        layoutDebug(debugButtonX, debugLabel24, col);
-        layoutDebug(debugButtonY, debugLabel25, col);
-        layoutDebug(debugButtonW, debugLabel26, col);
-        layoutDebug(debugButtonH, debugLabel27, col);
-        layoutDebug(debugButtonSpacing, debugLabel28, col);
-        layoutDebug(debugButtonBorderThickness, debugLabel29, col);
-        layoutDebug(debugButtonFontSize, debugLabel30, col);
-        layoutDebug(debugTitleX, debugLabel31, col);
-        layoutDebug(debugTitleY, debugLabel32, col);
-        layoutDebug(debugTitleW, debugLabel33, col);
-        layoutDebug(debugTitleH, debugLabel34, col);
-        layoutDebug(debugTitleFontSize, debugLabel35, col);
-        layoutDebug(debugOuterBorderThickness, debugLabel36, col);
-        layoutDebug(debugPluginWidth, debugLabel37, col);
-        layoutDebug(debugNoiseOpacity, debugLabel38, col);
-        layoutDebug(debugNoisePixelSize, debugLabel39, col);
-        layoutDebug(debugKnobTickLength, debugLabel40, col);
-        layoutDebug(debugKnobTickThickness, debugLabel41, col);
-        layoutDebug(debugKnobTickStartRadius, debugLabel42, col);
+        // Audio Processing Section sliders (only if expanded)
+        if (audioProcessingSectionExpanded)
+        {
+            // TODO: Add audio processing sliders here
+            // Example placeholder:
+            // layoutDebug(someAudioSlider, someAudioLabel);
+            
+            debugY += 10;
+        }
         
-        // Set container size to fit all sliders
-        debugContainer.setSize(totalWidth, juce::jmax(debugY + 20, 600));
+        // Set container size to fit all content
+        debugContainer.setSize(480, juce::jmax(debugY + 20, 600));
     }
 }
