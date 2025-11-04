@@ -56,12 +56,48 @@ private:
     juce::AudioBuffer<float> delayBufferRight;
     int delayWritePosition = 0;
     
+    // White noise generator for modulation
+    juce::Random noiseGenerator;
+    float smoothedNoiseLeft = 0.0f;
+    float smoothedNoiseRight = 0.0f;
+    
+    // Chorus/modulation LFO
+    float lfoPhase = 0.0f;
+    float lfoPhaseRight = 0.0f;
+    
+    // Bitcrusher state
+    float lastCrushedSampleLeft = 0.0f;
+    float lastCrushedSampleRight = 0.0f;
+    int crushCounterLeft = 0;
+    int crushCounterRight = 0;
+    
     // Reverb
     juce::dsp::Reverb reverb;
     juce::dsp::ProcessSpec spec;
     
-    // Filter for tone control
+    // Filters for tone control
     juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> lowPassFilter;
+    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> highPassFilter;
+
+    // Mode configuration structure
+    struct ModeConfig
+    {
+        float delayTimeBase;      // Base delay time in seconds
+        float feedbackAmount;     // Delay feedback (0.0 - 0.8)
+        float chorusDepth;        // Chorus modulation depth in ms
+        float chorusRate;         // Chorus LFO rate in Hz
+        float reverbSize;         // Reverb room size (0.0 - 1.0)
+        float reverbDamping;      // Reverb damping (0.0 - 1.0)
+        float reverbWet;          // Reverb wet amount (0.0 - 1.0)
+        float bitCrushAmount;     // Bitcrush intensity (1 = none, 16 = heavy)
+        float noiseModAmount;     // Noise modulation depth in ms
+        float noiseModSpeed;      // Noise smoothing (0.99 = slow, 0.9999 = fast)
+    };
+    
+    // Helper methods
+    ModeConfig getModeConfig(int mode);
+    float getModulatedDelayTime(float baseTime, float noiseValue, float lfoValue, const ModeConfig& config);
+    float applyBitcrush(float sample, float& lastCrushedSample, int& counter, int crushRate);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ClaritizerAudioProcessor)
 };
