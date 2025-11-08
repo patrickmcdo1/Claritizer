@@ -59,6 +59,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout ClaritizerAudioProcessor::cr
 // MODE CONFIGURATIONS
 ClaritizerAudioProcessor::ModeConfig ClaritizerAudioProcessor::getModeConfig(int mode)
 {
+    if (useDebugConfigs)
+        {
+            return debugModeConfigs[mode];
+        }
     switch (mode)
     {
         case 0: // Mode A - Gentle/Subtle

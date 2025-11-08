@@ -38,9 +38,27 @@ public:
 
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    
+    struct ModeConfig
+    {
+        float delayTimeBase;      // Base delay time in seconds
+        float feedbackAmount;     // Delay feedback (0.0 - 0.8)
+        float chorusDepth;        // Chorus modulation depth in ms
+        float chorusRate;         // Chorus LFO rate in Hz
+        float reverbSize;         // Reverb room size (0.0 - 1.0)
+        float reverbDamping;      // Reverb damping (0.0 - 1.0)
+        float reverbWet;          // Reverb wet amount (0.0 - 1.0)
+        float bitCrushAmount;     // Bitcrush intensity (1 = none, 16 = heavy)
+        float noiseModAmount;     // Noise modulation depth in ms
+        float noiseModSpeed;      // Noise smoothing (0.99 = slow, 0.9999 = fast)
+    };
 
     // Parameters
     juce::AudioProcessorValueTreeState parameters;
+    
+    // Debug mode config overrides (set by editor)
+    ModeConfig debugModeConfigs[4];
+    bool useDebugConfigs = false;
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -80,19 +98,9 @@ private:
     juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> highPassFilter;
 
     // Mode configuration structure
-    struct ModeConfig
-    {
-        float delayTimeBase;      // Base delay time in seconds
-        float feedbackAmount;     // Delay feedback (0.0 - 0.8)
-        float chorusDepth;        // Chorus modulation depth in ms
-        float chorusRate;         // Chorus LFO rate in Hz
-        float reverbSize;         // Reverb room size (0.0 - 1.0)
-        float reverbDamping;      // Reverb damping (0.0 - 1.0)
-        float reverbWet;          // Reverb wet amount (0.0 - 1.0)
-        float bitCrushAmount;     // Bitcrush intensity (1 = none, 16 = heavy)
-        float noiseModAmount;     // Noise modulation depth in ms
-        float noiseModSpeed;      // Noise smoothing (0.99 = slow, 0.9999 = fast)
-    };
+    
+    
+
     
     // Helper methods
     ModeConfig getModeConfig(int mode);

@@ -323,6 +323,177 @@ void ClaritizerAudioProcessorEditor::setupGui()
         debugLabel42.setText("KnobTickStart", juce::dontSendNotification);
         debugLabel42.setColour(juce::Label::textColourId, juce::Colours::white);
         debugLabel42.setFont(juce::Font(12.0f));
+        // Audio parameter sliders - normalized 0-10 scale
+        auto setupAudioSlider = [this](juce::Slider& slider, juce::Label& label,
+                                       const juce::String& name, float defaultVal)
+        {
+            debugContainer.addAndMakeVisible(slider);
+            debugContainer.addAndMakeVisible(label);
+            slider.setRange(0.0, 10.0, 0.1);  // Always 0-10 in 0.1 increments
+            slider.setValue(defaultVal);
+            slider.setSliderStyle(juce::Slider::LinearHorizontal);
+            slider.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 70, 20);
+            slider.setScrollWheelEnabled(false);
+            label.setText(name, juce::dontSendNotification);
+            label.setColour(juce::Label::textColourId, juce::Colours::white);
+            label.setFont(juce::Font(12.0f));
+        };
+        
+        // MODE A - all on 0-10 scale
+        setupAudioSlider(debugModeA_DelayTime, debugLabelA1, "A_DelayTime", 2.5);
+        setupAudioSlider(debugModeA_Feedback, debugLabelA2, "A_Feedback", 3.5);
+        setupAudioSlider(debugModeA_ChorusDepth, debugLabelA3, "A_ChorusDepth", 3.0);
+        setupAudioSlider(debugModeA_ChorusRate, debugLabelA4, "A_ChorusRate", 5.0);
+        setupAudioSlider(debugModeA_ReverbSize, debugLabelA5, "A_ReverbSize", 4.0);
+        setupAudioSlider(debugModeA_ReverbDamping, debugLabelA6, "A_ReverbDamp", 6.0);
+        setupAudioSlider(debugModeA_ReverbWet, debugLabelA7, "A_ReverbWet", 2.5);
+        setupAudioSlider(debugModeA_BitCrush, debugLabelA8, "A_BitCrush", 2.0);
+        setupAudioSlider(debugModeA_NoiseModAmount, debugLabelA9, "A_NoiseMod", 2.0);
+        setupAudioSlider(debugModeA_NoiseModSpeed, debugLabelA10, "A_NoiseSpeed", 9.5);
+        
+        // MODE B
+        setupAudioSlider(debugModeB_DelayTime, debugLabelB1, "B_DelayTime", 3.5);
+        setupAudioSlider(debugModeB_Feedback, debugLabelB2, "B_Feedback", 5.0);
+        setupAudioSlider(debugModeB_ChorusDepth, debugLabelB3, "B_ChorusDepth", 5.0);
+        setupAudioSlider(debugModeB_ChorusRate, debugLabelB4, "B_ChorusRate", 1.5);
+        setupAudioSlider(debugModeB_ReverbSize, debugLabelB5, "B_ReverbSize", 5.0);
+        setupAudioSlider(debugModeB_ReverbDamping, debugLabelB6, "B_ReverbDamp", 5.0);
+        setupAudioSlider(debugModeB_ReverbWet, debugLabelB7, "B_ReverbWet", 3.5);
+        setupAudioSlider(debugModeB_BitCrush, debugLabelB8, "B_BitCrush", 4.0);
+        setupAudioSlider(debugModeB_NoiseModAmount, debugLabelB9, "B_NoiseMod", 4.0);
+        setupAudioSlider(debugModeB_NoiseModSpeed, debugLabelB10, "B_NoiseSpeed", 9.0);
+        
+        // MODE C
+        setupAudioSlider(debugModeC_DelayTime, debugLabelC1, "C_DelayTime", 5.0);
+        setupAudioSlider(debugModeC_Feedback, debugLabelC2, "C_Feedback", 4.5);
+        setupAudioSlider(debugModeC_ChorusDepth, debugLabelC3, "C_ChorusDepth", 8.0);
+        setupAudioSlider(debugModeC_ChorusRate, debugLabelC4, "C_ChorusRate", 3.0);
+        setupAudioSlider(debugModeC_ReverbSize, debugLabelC5, "C_ReverbSize", 7.5);
+        setupAudioSlider(debugModeC_ReverbDamping, debugLabelC6, "C_ReverbDamp", 7.0);
+        setupAudioSlider(debugModeC_ReverbWet, debugLabelC7, "C_ReverbWet", 5.0);
+        setupAudioSlider(debugModeC_BitCrush, debugLabelC8, "C_BitCrush", 2.0);
+        setupAudioSlider(debugModeC_NoiseModAmount, debugLabelC9, "C_NoiseMod", 6.0);
+        setupAudioSlider(debugModeC_NoiseModSpeed, debugLabelC10, "C_NoiseSpeed", 9.8);
+        
+        // MODE D
+        setupAudioSlider(debugModeD_DelayTime, debugLabelD1, "D_DelayTime", 3.75);
+        setupAudioSlider(debugModeD_Feedback, debugLabelD2, "D_Feedback", 4.0);
+        setupAudioSlider(debugModeD_ChorusDepth, debugLabelD3, "D_ChorusDepth", 2.0);
+        setupAudioSlider(debugModeD_ChorusRate, debugLabelD4, "D_ChorusRate", 8.0);
+        setupAudioSlider(debugModeD_ReverbSize, debugLabelD5, "D_ReverbSize", 7.0);
+        setupAudioSlider(debugModeD_ReverbDamping, debugLabelD6, "D_ReverbDamp", 6.0);
+        setupAudioSlider(debugModeD_ReverbWet, debugLabelD7, "D_ReverbWet", 3.0);
+        setupAudioSlider(debugModeD_BitCrush, debugLabelD8, "D_BitCrush", 8.0);
+        setupAudioSlider(debugModeD_NoiseModAmount, debugLabelD9, "D_NoiseMod", 5.0);
+        setupAudioSlider(debugModeD_NoiseModSpeed, debugLabelD10, "D_NoiseSpeed", 7.0);
+        
+        // Set up callbacks to update processor debug configs with mapping
+        auto updateProcessorConfigs = [this]() {
+            audioProcessor.useDebugConfigs = true;
+            
+            // Helper to map 0-10 slider values to actual parameter ranges
+            auto mapDelay = [](float v) { return 0.01f + (v / 10.0f) * 4.99f; }; // 0-10 -> 0.01-5.0s
+            auto mapFeedback = [](float v) { return (v / 10.0f) * 0.95f; }; // 0-10 -> 0.0-0.95
+            auto mapChorus = [](float v) { return (v / 10.0f) * 50.0f; }; // 0-10 -> 0-50ms
+            auto mapRate = [](float v) { return 0.01f + (v / 10.0f) * 9.99f; }; // 0-10 -> 0.01-10Hz
+            auto mapReverb = [](float v) { return v / 10.0f; }; // 0-10 -> 0.0-1.0
+            auto mapBitcrush = [](float v) { return 1.0f + (v / 10.0f) * 31.0f; }; // 0-10 -> 1-32
+            auto mapNoiseMod = [](float v) { return (v / 10.0f) * 50.0f; }; // 0-10 -> 0-50ms
+            auto mapNoiseSpeed = [](float v) { return 0.9f + (v / 10.0f) * 0.0999f; }; // 0-10 -> 0.9-0.9999
+            
+            // Mode A
+            audioProcessor.debugModeConfigs[0].delayTimeBase = mapDelay(debugModeA_DelayTime.getValue());
+            audioProcessor.debugModeConfigs[0].feedbackAmount = mapFeedback(debugModeA_Feedback.getValue());
+            audioProcessor.debugModeConfigs[0].chorusDepth = mapChorus(debugModeA_ChorusDepth.getValue());
+            audioProcessor.debugModeConfigs[0].chorusRate = mapRate(debugModeA_ChorusRate.getValue());
+            audioProcessor.debugModeConfigs[0].reverbSize = mapReverb(debugModeA_ReverbSize.getValue());
+            audioProcessor.debugModeConfigs[0].reverbDamping = mapReverb(debugModeA_ReverbDamping.getValue());
+            audioProcessor.debugModeConfigs[0].reverbWet = mapReverb(debugModeA_ReverbWet.getValue());
+            audioProcessor.debugModeConfigs[0].bitCrushAmount = mapBitcrush(debugModeA_BitCrush.getValue());
+            audioProcessor.debugModeConfigs[0].noiseModAmount = mapNoiseMod(debugModeA_NoiseModAmount.getValue());
+            audioProcessor.debugModeConfigs[0].noiseModSpeed = mapNoiseSpeed(debugModeA_NoiseModSpeed.getValue());
+            
+            // Mode B
+            audioProcessor.debugModeConfigs[1].delayTimeBase = mapDelay(debugModeB_DelayTime.getValue());
+            audioProcessor.debugModeConfigs[1].feedbackAmount = mapFeedback(debugModeB_Feedback.getValue());
+            audioProcessor.debugModeConfigs[1].chorusDepth = mapChorus(debugModeB_ChorusDepth.getValue());
+            audioProcessor.debugModeConfigs[1].chorusRate = mapRate(debugModeB_ChorusRate.getValue());
+            audioProcessor.debugModeConfigs[1].reverbSize = mapReverb(debugModeB_ReverbSize.getValue());
+            audioProcessor.debugModeConfigs[1].reverbDamping = mapReverb(debugModeB_ReverbDamping.getValue());
+            audioProcessor.debugModeConfigs[1].reverbWet = mapReverb(debugModeB_ReverbWet.getValue());
+            audioProcessor.debugModeConfigs[1].bitCrushAmount = mapBitcrush(debugModeB_BitCrush.getValue());
+            audioProcessor.debugModeConfigs[1].noiseModAmount = mapNoiseMod(debugModeB_NoiseModAmount.getValue());
+            audioProcessor.debugModeConfigs[1].noiseModSpeed = mapNoiseSpeed(debugModeB_NoiseModSpeed.getValue());
+            
+            // Mode C
+            audioProcessor.debugModeConfigs[2].delayTimeBase = mapDelay(debugModeC_DelayTime.getValue());
+            audioProcessor.debugModeConfigs[2].feedbackAmount = mapFeedback(debugModeC_Feedback.getValue());
+            audioProcessor.debugModeConfigs[2].chorusDepth = mapChorus(debugModeC_ChorusDepth.getValue());
+            audioProcessor.debugModeConfigs[2].chorusRate = mapRate(debugModeC_ChorusRate.getValue());
+            audioProcessor.debugModeConfigs[2].reverbSize = mapReverb(debugModeC_ReverbSize.getValue());
+            audioProcessor.debugModeConfigs[2].reverbDamping = mapReverb(debugModeC_ReverbDamping.getValue());
+            audioProcessor.debugModeConfigs[2].reverbWet = mapReverb(debugModeC_ReverbWet.getValue());
+            audioProcessor.debugModeConfigs[2].bitCrushAmount = mapBitcrush(debugModeC_BitCrush.getValue());
+            audioProcessor.debugModeConfigs[2].noiseModAmount = mapNoiseMod(debugModeC_NoiseModAmount.getValue());
+            audioProcessor.debugModeConfigs[2].noiseModSpeed = mapNoiseSpeed(debugModeC_NoiseModSpeed.getValue());
+            
+            // Mode D
+            audioProcessor.debugModeConfigs[3].delayTimeBase = mapDelay(debugModeD_DelayTime.getValue());
+            audioProcessor.debugModeConfigs[3].feedbackAmount = mapFeedback(debugModeD_Feedback.getValue());
+            audioProcessor.debugModeConfigs[3].chorusDepth = mapChorus(debugModeD_ChorusDepth.getValue());
+            audioProcessor.debugModeConfigs[3].chorusRate = mapRate(debugModeD_ChorusRate.getValue());
+            audioProcessor.debugModeConfigs[3].reverbSize = mapReverb(debugModeD_ReverbSize.getValue());
+            audioProcessor.debugModeConfigs[3].reverbDamping = mapReverb(debugModeD_ReverbDamping.getValue());
+            audioProcessor.debugModeConfigs[3].reverbWet = mapReverb(debugModeD_ReverbWet.getValue());
+            audioProcessor.debugModeConfigs[3].bitCrushAmount = mapBitcrush(debugModeD_BitCrush.getValue());
+            audioProcessor.debugModeConfigs[3].noiseModAmount = mapNoiseMod(debugModeD_NoiseModAmount.getValue());
+            audioProcessor.debugModeConfigs[3].noiseModSpeed = mapNoiseSpeed(debugModeD_NoiseModSpeed.getValue());
+        };
+        
+        // Attach update callback to all audio processing sliders
+        debugModeA_DelayTime.onValueChange = updateProcessorConfigs;
+        debugModeA_Feedback.onValueChange = updateProcessorConfigs;
+        debugModeA_ChorusDepth.onValueChange = updateProcessorConfigs;
+        debugModeA_ChorusRate.onValueChange = updateProcessorConfigs;
+        debugModeA_ReverbSize.onValueChange = updateProcessorConfigs;
+        debugModeA_ReverbDamping.onValueChange = updateProcessorConfigs;
+        debugModeA_ReverbWet.onValueChange = updateProcessorConfigs;
+        debugModeA_BitCrush.onValueChange = updateProcessorConfigs;
+        debugModeA_NoiseModAmount.onValueChange = updateProcessorConfigs;
+        debugModeA_NoiseModSpeed.onValueChange = updateProcessorConfigs;
+        
+        debugModeB_DelayTime.onValueChange = updateProcessorConfigs;
+        debugModeB_Feedback.onValueChange = updateProcessorConfigs;
+        debugModeB_ChorusDepth.onValueChange = updateProcessorConfigs;
+        debugModeB_ChorusRate.onValueChange = updateProcessorConfigs;
+        debugModeB_ReverbSize.onValueChange = updateProcessorConfigs;
+        debugModeB_ReverbDamping.onValueChange = updateProcessorConfigs;
+        debugModeB_ReverbWet.onValueChange = updateProcessorConfigs;
+        debugModeB_BitCrush.onValueChange = updateProcessorConfigs;
+        debugModeB_NoiseModAmount.onValueChange = updateProcessorConfigs;
+        debugModeB_NoiseModSpeed.onValueChange = updateProcessorConfigs;
+        
+        debugModeC_DelayTime.onValueChange = updateProcessorConfigs;
+        debugModeC_Feedback.onValueChange = updateProcessorConfigs;
+        debugModeC_ChorusDepth.onValueChange = updateProcessorConfigs;
+        debugModeC_ChorusRate.onValueChange = updateProcessorConfigs;
+        debugModeC_ReverbSize.onValueChange = updateProcessorConfigs;
+        debugModeC_ReverbDamping.onValueChange = updateProcessorConfigs;
+        debugModeC_ReverbWet.onValueChange = updateProcessorConfigs;
+        debugModeC_BitCrush.onValueChange = updateProcessorConfigs;
+        debugModeC_NoiseModAmount.onValueChange = updateProcessorConfigs;
+        debugModeC_NoiseModSpeed.onValueChange = updateProcessorConfigs;
+        
+        debugModeD_DelayTime.onValueChange = updateProcessorConfigs;
+        debugModeD_Feedback.onValueChange = updateProcessorConfigs;
+        debugModeD_ChorusDepth.onValueChange = updateProcessorConfigs;
+        debugModeD_ChorusRate.onValueChange = updateProcessorConfigs;
+        debugModeD_ReverbSize.onValueChange = updateProcessorConfigs;
+        debugModeD_ReverbDamping.onValueChange = updateProcessorConfigs;
+        debugModeD_ReverbWet.onValueChange = updateProcessorConfigs;
+        debugModeD_BitCrush.onValueChange = updateProcessorConfigs;
+        debugModeD_NoiseModAmount.onValueChange = updateProcessorConfigs;
+        debugModeD_NoiseModSpeed.onValueChange = updateProcessorConfigs;
     }
 }
 
@@ -595,16 +766,24 @@ void ClaritizerAudioProcessorEditor::resized()
         debugY += sectionButtonHeight + 10;
         
         // UI Section sliders (only if expanded)
-        if (uiSectionExpanded)
-        {
-            auto layoutDebug = [&](juce::Slider& slider, juce::Label& label)
-            {
-                slider.setVisible(true);
-                label.setVisible(true);
-                label.setBounds(20, debugY, labelW, 20);
-                slider.setBounds(20 + labelW, debugY, sliderW, 20);
-                debugY += spacing;
-            };
+        auto layoutDebug = [&](juce::Slider& slider, juce::Label& label)
+                {
+                    slider.setVisible(true);
+                    label.setVisible(true);
+                    label.setBounds(20, debugY, labelW, 20);
+                    slider.setBounds(20 + labelW, debugY, sliderW, 20);
+                    debugY += spacing;
+                };
+                
+                auto hideDebug = [](juce::Slider& slider, juce::Label& label)
+                {
+                    slider.setVisible(false);
+                    label.setVisible(false);
+                };
+                
+                // UI Section sliders (only if expanded)
+                if (uiSectionExpanded)
+                {
             
             // All UI control sliders
             layoutDebug(debugClaritySliderX, debugLabel1);
@@ -704,7 +883,6 @@ void ClaritizerAudioProcessorEditor::resized()
             hideDebug(debugKnobTickThickness, debugLabel41);
             hideDebug(debugKnobTickStartRadius, debugLabel42);
         }
-        
         // Audio Processing Section Button
         audioProcessingSectionButton.setBounds(10, debugY, 460, sectionButtonHeight);
         debugY += sectionButtonHeight + 10;
@@ -712,9 +890,59 @@ void ClaritizerAudioProcessorEditor::resized()
         // Audio Processing Section sliders (only if expanded)
         if (audioProcessingSectionExpanded)
         {
-            // TODO: Add audio processing sliders here
-            // Example placeholder:
-            // layoutDebug(someAudioSlider, someAudioLabel);
+            // MODE A
+            layoutDebug(debugModeA_DelayTime, debugLabelA1);
+            layoutDebug(debugModeA_Feedback, debugLabelA2);
+            layoutDebug(debugModeA_ChorusDepth, debugLabelA3);
+            layoutDebug(debugModeA_ChorusRate, debugLabelA4);
+            layoutDebug(debugModeA_ReverbSize, debugLabelA5);
+            layoutDebug(debugModeA_ReverbDamping, debugLabelA6);
+            layoutDebug(debugModeA_ReverbWet, debugLabelA7);
+            layoutDebug(debugModeA_BitCrush, debugLabelA8);
+            layoutDebug(debugModeA_NoiseModAmount, debugLabelA9);
+            layoutDebug(debugModeA_NoiseModSpeed, debugLabelA10);
+            
+            debugY += 10;
+            
+            // MODE B
+            layoutDebug(debugModeB_DelayTime, debugLabelB1);
+            layoutDebug(debugModeB_Feedback, debugLabelB2);
+            layoutDebug(debugModeB_ChorusDepth, debugLabelB3);
+            layoutDebug(debugModeB_ChorusRate, debugLabelB4);
+            layoutDebug(debugModeB_ReverbSize, debugLabelB5);
+            layoutDebug(debugModeB_ReverbDamping, debugLabelB6);
+            layoutDebug(debugModeB_ReverbWet, debugLabelB7);
+            layoutDebug(debugModeB_BitCrush, debugLabelB8);
+            layoutDebug(debugModeB_NoiseModAmount, debugLabelB9);
+            layoutDebug(debugModeB_NoiseModSpeed, debugLabelB10);
+            
+            debugY += 10;
+            
+            // MODE C
+            layoutDebug(debugModeC_DelayTime, debugLabelC1);
+            layoutDebug(debugModeC_Feedback, debugLabelC2);
+            layoutDebug(debugModeC_ChorusDepth, debugLabelC3);
+            layoutDebug(debugModeC_ChorusRate, debugLabelC4);
+            layoutDebug(debugModeC_ReverbSize, debugLabelC5);
+            layoutDebug(debugModeC_ReverbDamping, debugLabelC6);
+            layoutDebug(debugModeC_ReverbWet, debugLabelC7);
+            layoutDebug(debugModeC_BitCrush, debugLabelC8);
+            layoutDebug(debugModeC_NoiseModAmount, debugLabelC9);
+            layoutDebug(debugModeC_NoiseModSpeed, debugLabelC10);
+            
+            debugY += 10;
+            
+            // MODE D
+            layoutDebug(debugModeD_DelayTime, debugLabelD1);
+            layoutDebug(debugModeD_Feedback, debugLabelD2);
+            layoutDebug(debugModeD_ChorusDepth, debugLabelD3);
+            layoutDebug(debugModeD_ChorusRate, debugLabelD4);
+            layoutDebug(debugModeD_ReverbSize, debugLabelD5);
+            layoutDebug(debugModeD_ReverbDamping, debugLabelD6);
+            layoutDebug(debugModeD_ReverbWet, debugLabelD7);
+            layoutDebug(debugModeD_BitCrush, debugLabelD8);
+            layoutDebug(debugModeD_NoiseModAmount, debugLabelD9);
+            layoutDebug(debugModeD_NoiseModSpeed, debugLabelD10);
             
             debugY += 10;
         }

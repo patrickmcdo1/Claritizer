@@ -187,6 +187,34 @@ private:
     float knobTickThickness = 10.0f;
     float knobTickStartRadius = 35.0f;
     
+    // Audio processing debug sliders - Mode A
+    juce::Slider debugModeA_DelayTime, debugModeA_Feedback, debugModeA_ChorusDepth, debugModeA_ChorusRate;
+    juce::Slider debugModeA_ReverbSize, debugModeA_ReverbDamping, debugModeA_ReverbWet;
+    juce::Slider debugModeA_BitCrush, debugModeA_NoiseModAmount, debugModeA_NoiseModSpeed;
+    juce::Label debugLabelA1, debugLabelA2, debugLabelA3, debugLabelA4, debugLabelA5;
+    juce::Label debugLabelA6, debugLabelA7, debugLabelA8, debugLabelA9, debugLabelA10;
+    
+    // Audio processing debug sliders - Mode B
+    juce::Slider debugModeB_DelayTime, debugModeB_Feedback, debugModeB_ChorusDepth, debugModeB_ChorusRate;
+    juce::Slider debugModeB_ReverbSize, debugModeB_ReverbDamping, debugModeB_ReverbWet;
+    juce::Slider debugModeB_BitCrush, debugModeB_NoiseModAmount, debugModeB_NoiseModSpeed;
+    juce::Label debugLabelB1, debugLabelB2, debugLabelB3, debugLabelB4, debugLabelB5;
+    juce::Label debugLabelB6, debugLabelB7, debugLabelB8, debugLabelB9, debugLabelB10;
+    
+    // Audio processing debug sliders - Mode C
+    juce::Slider debugModeC_DelayTime, debugModeC_Feedback, debugModeC_ChorusDepth, debugModeC_ChorusRate;
+    juce::Slider debugModeC_ReverbSize, debugModeC_ReverbDamping, debugModeC_ReverbWet;
+    juce::Slider debugModeC_BitCrush, debugModeC_NoiseModAmount, debugModeC_NoiseModSpeed;
+    juce::Label debugLabelC1, debugLabelC2, debugLabelC3, debugLabelC4, debugLabelC5;
+    juce::Label debugLabelC6, debugLabelC7, debugLabelC8, debugLabelC9, debugLabelC10;
+    
+    // Audio processing debug sliders - Mode D
+    juce::Slider debugModeD_DelayTime, debugModeD_Feedback, debugModeD_ChorusDepth, debugModeD_ChorusRate;
+    juce::Slider debugModeD_ReverbSize, debugModeD_ReverbDamping, debugModeD_ReverbWet;
+    juce::Slider debugModeD_BitCrush, debugModeD_NoiseModAmount, debugModeD_NoiseModSpeed;
+    juce::Label debugLabelD1, debugLabelD2, debugLabelD3, debugLabelD4, debugLabelD5;
+    juce::Label debugLabelD6, debugLabelD7, debugLabelD8, debugLabelD9, debugLabelD10;
+    
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> clarityAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> timeAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> toneAttachment;
