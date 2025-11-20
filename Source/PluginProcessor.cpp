@@ -16,9 +16,6 @@ ClaritizerAudioProcessor::ClaritizerAudioProcessor()
     timeParam = parameters.getRawParameterValue("time");
     toneParam = parameters.getRawParameterValue("tone");
     modeParam = parameters.getRawParameterValue("mode");
-    
-    // Initialize LFO phases with stereo offset
-    lfoPhaseRight = juce::MathConstants<float>::pi * 0.5f; // 90 degrees offset for stereo width
 }
 
 ClaritizerAudioProcessor::~ClaritizerAudioProcessor()
@@ -56,109 +53,64 @@ juce::AudioProcessorValueTreeState::ParameterLayout ClaritizerAudioProcessor::cr
     return layout;
 }
 
-// MODE CONFIGURATIONS
+//==============================================================================
+// MODE CONFIGURATIONS - All modes start identical
+//==============================================================================
 ClaritizerAudioProcessor::ModeConfig ClaritizerAudioProcessor::getModeConfig(int mode)
 {
     if (useDebugConfigs)
-        {
-            return debugModeConfigs[mode];
-        }
-    switch (mode)
     {
-        case 0: // Mode A - Gentle/Subtle
-            return {
-                0.25f,      // delayTimeBase: 250ms
-                0.35f,      // feedbackAmount: gentle repeats
-                3.0f,       // chorusDepth: 3ms modulation
-                0.5f,       // chorusRate: 0.5 Hz (slow)
-                0.4f,       // reverbSize: small room
-                0.6f,       // reverbDamping: moderate
-                0.25f,      // reverbWet: subtle
-                2.0f,       // bitCrushAmount: minimal (almost none)
-                2.0f,       // noiseModAmount: 2ms noise wobble
-                0.9995f     // noiseModSpeed: slow smooth noise
-            };
-            
-        case 1: // Mode B - Vibrant/Energetic
-            return {
-                0.35f,      // delayTimeBase: 350ms
-                0.50f,      // feedbackAmount: more repeats
-                5.0f,       // chorusDepth: 5ms modulation
-                1.5f,       // chorusRate: 1.5 Hz (medium-fast)
-                0.5f,       // reverbSize: medium room
-                0.5f,       // reverbDamping: bright
-                0.35f,      // reverbWet: moderate
-                4.0f,       // bitCrushAmount: moderate texture
-                4.0f,       // noiseModAmount: 4ms noise wobble
-                0.999f      // noiseModSpeed: medium-fast noise
-            };
-            
-        case 2: // Mode C - Lush/Dreamy
-            return {
-                0.50f,      // delayTimeBase: 500ms
-                0.45f,      // feedbackAmount: sustained but not runaway
-                8.0f,       // chorusDepth: 8ms deep modulation
-                0.3f,       // chorusRate: 0.3 Hz (very slow)
-                0.75f,      // reverbSize: large hall
-                0.7f,       // reverbDamping: darker/warmer
-                0.50f,      // reverbWet: heavy reverb
-                2.0f,       // bitCrushAmount: minimal (keep it clean)
-                6.0f,       // noiseModAmount: 6ms heavy drift
-                0.9998f     // noiseModSpeed: very slow smooth drift
-            };
-            
-        case 3: // Mode D - Lo-Fi/Vintage
-            return {
-                0.375f,     // delayTimeBase: 375ms (classic tape delay)
-                0.40f,      // feedbackAmount: vintage tape repeats
-                2.0f,       // chorusDepth: 2ms subtle warble
-                0.8f,       // chorusRate: 0.8 Hz
-                0.70f,      // reverbSize: medium-large room
-                0.6f,       // reverbDamping: moderate
-                0.30f,      // reverbWet: moderate reverb
-                8.0f,       // bitCrushAmount: heavy lo-fi texture
-                5.0f,       // noiseModAmount: 5ms tape wobble
-                0.997f      // noiseModSpeed: faster noise for tape flutter
-            };
-            
-        default:
-            return getModeConfig(0);
-    }
-}
-
-// Helper: Calculate modulated delay time
-float ClaritizerAudioProcessor::getModulatedDelayTime(float baseTime, float noiseValue,
-                                                       float lfoValue, const ModeConfig& config)
-{
-    // Combine noise modulation and LFO modulation
-    float noiseOffset = noiseValue * config.noiseModAmount * 0.001f; // Convert ms to seconds
-    float lfoOffset = lfoValue * config.chorusDepth * 0.001f; // Convert ms to seconds
-    
-    return baseTime + noiseOffset + lfoOffset;
-}
-
-// Helper: Apply bitcrushing effect
-float ClaritizerAudioProcessor::applyBitcrush(float sample, float& lastCrushedSample,
-                                               int& counter, int crushRate)
-{
-    if (crushRate <= 1)
-        return sample; // No crushing
-    
-    // Sample rate reduction
-    counter++;
-    if (counter >= crushRate)
-    {
-        counter = 0;
-        
-        // Bit depth reduction (quantization)
-        int bits = juce::jmax(1, 16 - (int)(crushRate * 0.5f)); // Reduce bits as crush increases
-        float steps = std::pow(2.0f, bits);
-        lastCrushedSample = std::floor(sample * steps) / steps;
+        return debugModeConfigs[mode];
     }
     
-    return lastCrushedSample;
+    // All modes start with same defaults (like original Mode A)
+    ModeConfig config;
+    
+    // Chorus (bypassed initially - user can enable via debug sliders)
+    config.chorus.timeMs = 30.0f;      // Good starting point for chorus
+    config.chorus.feedback = 0.0f;      // No feedback initially
+    config.chorus.modDepth = 0.0f;      // No modulation initially
+    config.chorus.modRate = 0.0f;       // No LFO initially
+    config.chorus.mix = 0.0f;           // BYPASSED - enable via sliders
+    
+    // Delay 1 (main delay - 250ms like original Mode A)
+    config.delay1.baseTimeMs = 250.0f;
+    config.delay1.feedback = 0.4f;
+    config.delay1.modDepth = 0.0f;
+    config.delay1.modRate = 0.0f;
+    config.delay1.mix = 1.0f;           // Active
+    config.delay1.reverse = false;
+    
+    // Delay 2 (muted initially)
+    config.delay2.baseTimeMs = 100.0f;
+    config.delay2.feedback = 0.0f;
+    config.delay2.modDepth = 0.0f;
+    config.delay2.modRate = 0.0f;
+    config.delay2.mix = 0.0f;           // MUTED - enable via sliders
+    config.delay2.reverse = false;
+    
+    // Reverb (good starting delays for diffusion network, bypassed initially)
+    config.reverb.delay1Time = 37.0f;   // Prime numbers for good diffusion
+    config.reverb.delay2Time = 83.0f;
+    config.reverb.delay3Time = 127.0f;
+    config.reverb.delay4Time = 211.0f;
+    config.reverb.sharedFeedback = 0.0f; // No feedback initially
+    config.reverb.mix = 0.0f;            // BYPASSED - enable via sliders
+    
+    return config;
 }
 
+//==============================================================================
+// Safety limiter
+//==============================================================================
+float ClaritizerAudioProcessor::softClip(float sample)
+{
+    if (std::abs(sample) > 0.9f)
+        return std::tanh(sample * 0.5f) * 1.2f;
+    return sample;
+}
+
+//==============================================================================
 const juce::String ClaritizerAudioProcessor::getName() const
 {
     return JucePlugin_Name;
@@ -219,6 +171,7 @@ void ClaritizerAudioProcessor::changeProgramName(int index, const juce::String& 
 {
 }
 
+//==============================================================================
 void ClaritizerAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     // Setup DSP spec
@@ -226,42 +179,36 @@ void ClaritizerAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBl
     spec.maximumBlockSize = samplesPerBlock;
     spec.numChannels = 2;
     
-    // Setup reverb with default parameters (will be updated per mode)
-    juce::dsp::Reverb::Parameters reverbParams;
-    reverbParams.roomSize = 0.5f;
-    reverbParams.damping = 0.5f;
-    reverbParams.wetLevel = 0.3f;
-    reverbParams.dryLevel = 0.0f;
-    reverbParams.width = 1.0f;
-    reverbParams.freezeMode = 0.0f;
-    reverb.setParameters(reverbParams);
-    reverb.prepare(spec);
+    // Setup all delay lines (5 seconds max - plenty of room)
+    chorusLeft.prepare(sampleRate, 5.0f);
+    chorusRight.prepare(sampleRate, 5.0f);
+    delay1Left.prepare(sampleRate, 5.0f);
+    delay1Right.prepare(sampleRate, 5.0f);
+    delay2Left.prepare(sampleRate, 5.0f);
+    delay2Right.prepare(sampleRate, 5.0f);
+    reverb1Left.prepare(sampleRate, 5.0f);
+    reverb1Right.prepare(sampleRate, 5.0f);
+    reverb2Left.prepare(sampleRate, 5.0f);
+    reverb2Right.prepare(sampleRate, 5.0f);
+    reverb3Left.prepare(sampleRate, 5.0f);
+    reverb3Right.prepare(sampleRate, 5.0f);
+    reverb4Left.prepare(sampleRate, 5.0f);
+    reverb4Right.prepare(sampleRate, 5.0f);
     
-    // Setup delay buffers (3 seconds max to accommodate all modes and modulation)
-    int maxDelaySize = (int)(3.0 * sampleRate);
-    delayBufferLeft.setSize(1, maxDelaySize);
-    delayBufferRight.setSize(1, maxDelaySize);
-    delayBufferLeft.clear();
-    delayBufferRight.clear();
-    delayWritePosition = 0;
+    // Setup all LFOs
+    chorusLFOLeft.prepare(sampleRate);
+    chorusLFORight.prepare(sampleRate);
+    lfo1Left.prepare(sampleRate);
+    lfo1Right.prepare(sampleRate);
+    lfo2Left.prepare(sampleRate);
+    lfo2Right.prepare(sampleRate);
     
-    // Setup filters
-    lowPassFilter.prepare(spec);
-    highPassFilter.prepare(spec);
-    
-    // Reset modulation state
-    lfoPhase = 0.0f;
-    lfoPhaseRight = juce::MathConstants<float>::pi * 0.5f;
-    smoothedNoiseLeft = 0.0f;
-    smoothedNoiseRight = 0.0f;
-    crushCounterLeft = 0;
-    crushCounterRight = 0;
+    // Setup tone filter
+    toneFilter.prepare(spec);
 }
 
 void ClaritizerAudioProcessor::releaseResources()
 {
-    delayBufferLeft.setSize(0, 0);
-    delayBufferRight.setSize(0, 0);
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -285,6 +232,7 @@ bool ClaritizerAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts
 }
 #endif
 
+//==============================================================================
 void ClaritizerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -303,128 +251,177 @@ void ClaritizerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
     // Get mode configuration
     ModeConfig config = getModeConfig(mode);
     
-    // Calculate delay time based on mode and time knob
-    float baseDelayTime = config.delayTimeBase * timeScale;
-    int baseDelayInSamples = (int)(baseDelayTime * getSampleRate());
+    // Set LFO frequencies
+    chorusLFOLeft.setFrequency(config.chorus.modRate);
+    chorusLFORight.setFrequency(config.chorus.modRate);
+    lfo1Left.setFrequency(config.delay1.modRate);
+    lfo1Right.setFrequency(config.delay1.modRate);
+    lfo2Left.setFrequency(config.delay2.modRate);
+    lfo2Right.setFrequency(config.delay2.modRate);
     
-    // Update reverb parameters for this mode
-    juce::dsp::Reverb::Parameters reverbParams;
-    reverbParams.roomSize = config.reverbSize;
-    reverbParams.damping = config.reverbDamping;
-    reverbParams.wetLevel = config.reverbWet;
-    reverbParams.dryLevel = 0.0f;
-    reverbParams.width = 1.0f;
-    reverbParams.freezeMode = 0.0f;
-    reverb.setParameters(reverbParams);
-    
-    // Calculate LFO increment
-    float lfoIncrement = (config.chorusRate * 2.0f * juce::MathConstants<float>::pi) / (float)getSampleRate();
-    
-    // Create a copy for wet processing
+    // Create wet buffer for processing
     juce::AudioBuffer<float> wetBuffer;
     wetBuffer.makeCopyOf(buffer);
     
     // Process each sample
-    for (int sample = 0; sample < wetBuffer.getNumSamples(); ++sample)
+    for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
     {
-        // Update noise modulation (smooth random walk)
-        float newNoiseLeft = (noiseGenerator.nextFloat() * 2.0f - 1.0f); // -1 to 1
-        float newNoiseRight = (noiseGenerator.nextFloat() * 2.0f - 1.0f);
-        smoothedNoiseLeft = smoothedNoiseLeft * config.noiseModSpeed + newNoiseLeft * (1.0f - config.noiseModSpeed);
-        smoothedNoiseRight = smoothedNoiseRight * config.noiseModSpeed + newNoiseRight * (1.0f - config.noiseModSpeed);
+        // LEFT CHANNEL
+        float input = wetBuffer.getSample(0, sample);
         
-        // Update LFO for chorus
-        float lfoValueLeft = std::sin(lfoPhase);
-        float lfoValueRight = std::sin(lfoPhaseRight);
-        lfoPhase += lfoIncrement;
-        lfoPhaseRight += lfoIncrement;
-        if (lfoPhase >= juce::MathConstants<float>::twoPi)
-            lfoPhase -= juce::MathConstants<float>::twoPi;
-        if (lfoPhaseRight >= juce::MathConstants<float>::twoPi)
-            lfoPhaseRight -= juce::MathConstants<float>::twoPi;
+        // === CHORUS MODULE (series, pre) ===
+        float chorusTime = (config.chorus.timeMs * timeScale / 1000.0f) * (float)getSampleRate();
+        float chorusModDepth = (config.chorus.modDepth / 1000.0f) * (float)getSampleRate();
+        float chorusLFO = chorusLFOLeft.getNextSample();
+        float chorusDelay = juce::jmax(1.0f, chorusTime + (chorusLFO * chorusModDepth));
         
-        // Process each channel
-        for (int channel = 0; channel < totalNumInputChannels; ++channel)
-        {
-            auto* channelData = wetBuffer.getWritePointer(channel);
-            auto* delayData = (channel == 0) ? delayBufferLeft.getWritePointer(0) : delayBufferRight.getWritePointer(0);
-            int delayBufferSize = (channel == 0) ? delayBufferLeft.getNumSamples() : delayBufferRight.getNumSamples();
-            
-            // Get modulated delay time
-            float noise = (channel == 0) ? smoothedNoiseLeft : smoothedNoiseRight;
-            float lfo = (channel == 0) ? lfoValueLeft : lfoValueRight;
-            float modulatedDelayTime = getModulatedDelayTime(baseDelayTime, noise, lfo, config);
-            int modulatedDelayInSamples = juce::jlimit(1, delayBufferSize - 1,
-                                                        (int)(modulatedDelayTime * getSampleRate()));
-            
-            // Read from delay buffer with interpolation for smooth modulation
-            int readPos = delayWritePosition - modulatedDelayInSamples;
-            if (readPos < 0)
-                readPos += delayBufferSize;
-            
-            int readPosNext = readPos + 1;
-            if (readPosNext >= delayBufferSize)
-                readPosNext -= delayBufferSize;
-            
-            float frac = (modulatedDelayTime * getSampleRate()) - modulatedDelayInSamples;
-            float delayedSample = delayData[readPos] * (1.0f - frac) + delayData[readPosNext] * frac;
-            
-            // Mix input with delayed signal (with feedback)
-            float inputSample = channelData[sample];
-            float outputSample = inputSample + (delayedSample * config.feedbackAmount);
-            
-            // Write to delay buffer
-            delayData[delayWritePosition] = inputSample + (delayedSample * config.feedbackAmount * 0.7f);
-            
-            // Apply to output
-            channelData[sample] = outputSample;
-        }
+        float chorusDelayed = chorusLeft.readSample(chorusDelay);
+        float chorusFeedback = juce::jlimit(0.0f, 0.90f, config.chorus.feedback);
+        float chorusMixed = input + (chorusDelayed * chorusFeedback);
+        chorusMixed = softClip(chorusMixed);
+        chorusLeft.writeSample(chorusMixed);
         
-        // Increment write position once per sample (after processing all channels)
-        delayWritePosition++;
-        if (delayWritePosition >= delayBufferLeft.getNumSamples())
-            delayWritePosition = 0;
+        float chorusOutput = input * (1.0f - config.chorus.mix) + chorusMixed * config.chorus.mix;
+        
+        // === PARALLEL DELAYS (Delay 1 & 2) ===
+        
+        // Delay 1
+        float delay1Time = (config.delay1.baseTimeMs * timeScale / 1000.0f) * (float)getSampleRate();
+        float delay1ModDepth = (config.delay1.modDepth / 1000.0f) * (float)getSampleRate();
+        float lfo1 = lfo1Left.getNextSample();
+        float delay1 = juce::jmax(1.0f, delay1Time + (lfo1 * delay1ModDepth));
+        
+        float delayed1 = delay1Left.readSample(delay1);
+        float feedback1 = juce::jlimit(0.0f, 0.90f, config.delay1.feedback);
+        float mixed1 = chorusOutput + (delayed1 * feedback1);
+        mixed1 = softClip(mixed1);
+        delay1Left.writeSample(mixed1);
+        float output1 = mixed1 * config.delay1.mix;
+        
+        // Delay 2
+        float delay2Time = (config.delay2.baseTimeMs * timeScale / 1000.0f) * (float)getSampleRate();
+        float delay2ModDepth = (config.delay2.modDepth / 1000.0f) * (float)getSampleRate();
+        float lfo2 = lfo2Left.getNextSample();
+        float delay2 = juce::jmax(1.0f, delay2Time + (lfo2 * delay2ModDepth));
+        
+        float delayed2 = delay2Left.readSample(delay2);
+        float feedback2 = juce::jlimit(0.0f, 0.90f, config.delay2.feedback);
+        float mixed2 = chorusOutput + (delayed2 * feedback2);
+        mixed2 = softClip(mixed2);
+        delay2Left.writeSample(mixed2);
+        float output2 = mixed2 * config.delay2.mix;
+        
+        // Sum parallel delays
+        float parallelSum = output1 + output2;
+        
+        // === REVERB MODULE (series diffusion network, post) ===
+        float reverbFeedback = juce::jlimit(0.0f, 0.90f, config.reverb.sharedFeedback);
+        
+        // Delay 1
+        float rev1Time = (config.reverb.delay1Time * timeScale / 1000.0f) * (float)getSampleRate();
+        rev1Time = juce::jmax(1.0f, rev1Time);
+        float rev1Delayed = reverb1Left.readSample(rev1Time);
+        float rev1Mixed = parallelSum + (rev1Delayed * reverbFeedback);
+        rev1Mixed = softClip(rev1Mixed);
+        reverb1Left.writeSample(rev1Mixed);
+        
+        // Delay 2 (input is output of Delay 1)
+        float rev2Time = (config.reverb.delay2Time * timeScale / 1000.0f) * (float)getSampleRate();
+        rev2Time = juce::jmax(1.0f, rev2Time);
+        float rev2Delayed = reverb2Left.readSample(rev2Time);
+        float rev2Mixed = rev1Mixed + (rev2Delayed * reverbFeedback);
+        rev2Mixed = softClip(rev2Mixed);
+        reverb2Left.writeSample(rev2Mixed);
+        
+        // Delay 3 (input is output of Delay 2)
+        float rev3Time = (config.reverb.delay3Time * timeScale / 1000.0f) * (float)getSampleRate();
+        rev3Time = juce::jmax(1.0f, rev3Time);
+        float rev3Delayed = reverb3Left.readSample(rev3Time);
+        float rev3Mixed = rev2Mixed + (rev3Delayed * reverbFeedback);
+        rev3Mixed = softClip(rev3Mixed);
+        reverb3Left.writeSample(rev3Mixed);
+        
+        // Delay 4 (input is output of Delay 3)
+        float rev4Time = (config.reverb.delay4Time * timeScale / 1000.0f) * (float)getSampleRate();
+        rev4Time = juce::jmax(1.0f, rev4Time);
+        float rev4Delayed = reverb4Left.readSample(rev4Time);
+        float rev4Mixed = rev3Mixed + (rev4Delayed * reverbFeedback);
+        rev4Mixed = softClip(rev4Mixed);
+        reverb4Left.writeSample(rev4Mixed);
+        
+        // Mix reverb with dry parallel sum
+        float reverbOutput = parallelSum * (1.0f - config.reverb.mix) + rev4Mixed * config.reverb.mix;
+        
+        wetBuffer.setSample(0, sample, reverbOutput);
+        
+        // RIGHT CHANNEL (same logic)
+        input = wetBuffer.getSample(1, sample);
+        
+        // Chorus
+        chorusLFO = chorusLFORight.getNextSample();
+        chorusDelay = juce::jmax(1.0f, chorusTime + (chorusLFO * chorusModDepth));
+        chorusDelayed = chorusRight.readSample(chorusDelay);
+        chorusMixed = input + (chorusDelayed * chorusFeedback);
+        chorusMixed = softClip(chorusMixed);
+        chorusRight.writeSample(chorusMixed);
+        chorusOutput = input * (1.0f - config.chorus.mix) + chorusMixed * config.chorus.mix;
+        
+        // Delay 1
+        lfo1 = lfo1Right.getNextSample();
+        delay1 = juce::jmax(1.0f, delay1Time + (lfo1 * delay1ModDepth));
+        delayed1 = delay1Right.readSample(delay1);
+        mixed1 = chorusOutput + (delayed1 * feedback1);
+        mixed1 = softClip(mixed1);
+        delay1Right.writeSample(mixed1);
+        output1 = mixed1 * config.delay1.mix;
+        
+        // Delay 2
+        lfo2 = lfo2Right.getNextSample();
+        delay2 = juce::jmax(1.0f, delay2Time + (lfo2 * delay2ModDepth));
+        delayed2 = delay2Right.readSample(delay2);
+        mixed2 = chorusOutput + (delayed2 * feedback2);
+        mixed2 = softClip(mixed2);
+        delay2Right.writeSample(mixed2);
+        output2 = mixed2 * config.delay2.mix;
+        
+        parallelSum = output1 + output2;
+        
+        // Reverb series
+        rev1Delayed = reverb1Right.readSample(rev1Time);
+        rev1Mixed = parallelSum + (rev1Delayed * reverbFeedback);
+        rev1Mixed = softClip(rev1Mixed);
+        reverb1Right.writeSample(rev1Mixed);
+        
+        rev2Delayed = reverb2Right.readSample(rev2Time);
+        rev2Mixed = rev1Mixed + (rev2Delayed * reverbFeedback);
+        rev2Mixed = softClip(rev2Mixed);
+        reverb2Right.writeSample(rev2Mixed);
+        
+        rev3Delayed = reverb3Right.readSample(rev3Time);
+        rev3Mixed = rev2Mixed + (rev3Delayed * reverbFeedback);
+        rev3Mixed = softClip(rev3Mixed);
+        reverb3Right.writeSample(rev3Mixed);
+        
+        rev4Delayed = reverb4Right.readSample(rev4Time);
+        rev4Mixed = rev3Mixed + (rev4Delayed * reverbFeedback);
+        rev4Mixed = softClip(rev4Mixed);
+        reverb4Right.writeSample(rev4Mixed);
+        
+        reverbOutput = parallelSum * (1.0f - config.reverb.mix) + rev4Mixed * config.reverb.mix;
+        
+        wetBuffer.setSample(1, sample, reverbOutput);
     }
     
-    // Apply bitcrushing
-    int crushRate = (int)config.bitCrushAmount;
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        auto* channelData = wetBuffer.getWritePointer(channel);
-        float& lastCrushed = (channel == 0) ? lastCrushedSampleLeft : lastCrushedSampleRight;
-        int& counter = (channel == 0) ? crushCounterLeft : crushCounterRight;
-        
-        for (int sample = 0; sample < wetBuffer.getNumSamples(); ++sample)
-        {
-            channelData[sample] = applyBitcrush(channelData[sample], lastCrushed, counter, crushRate);
-        }
-    }
+    // Apply tone filter
+    float cutoffFreq = 200.0f + (toneValue * 18000.0f);
+    *toneFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(
+        getSampleRate(), cutoffFreq, 0.7f);
     
-    // Apply reverb to wet buffer
-    juce::dsp::AudioBlock<float> block(wetBuffer);
-    juce::dsp::ProcessContextReplacing<float> context(block);
-    reverb.process(context);
+    juce::dsp::AudioBlock<float> wetBlock(wetBuffer);
+    juce::dsp::ProcessContextReplacing<float> wetContext(wetBlock);
+    toneFilter.process(wetContext);
     
-    // Apply tone filtering (crossfade between low-pass and high-pass)
-    // toneValue: 0.0 = dark (low-pass), 0.5 = neutral, 1.0 = bright (high-pass)
-    if (toneValue < 0.5f)
-    {
-        // Dark side - apply low-pass filter
-        float cutoff = 200.0f + (toneValue * 2.0f * 18000.0f); // 200Hz to 18.2kHz
-        *lowPassFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(
-            getSampleRate(), cutoff, 0.7f);
-        lowPassFilter.process(context);
-    }
-    else
-    {
-        // Bright side - apply high-pass filter
-        float cutoff = 20.0f + ((toneValue - 0.5f) * 2.0f * 800.0f); // 20Hz to 820Hz
-        *highPassFilter.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(
-            getSampleRate(), cutoff, 0.7f);
-        highPassFilter.process(context);
-    }
-    
-    // Mix dry and wet
+    // Mix dry and wet with FINAL SAFETY LIMITING
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* dryData = buffer.getWritePointer(channel);
@@ -432,7 +429,15 @@ void ClaritizerAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, ju
         
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
-            dryData[sample] = dryData[sample] * (1.0f - dryWet) + wetData[sample] * dryWet;
+            float drySample = dryData[sample];
+            float wetSample = wetData[sample];
+            
+            float output = drySample * (1.0f - dryWet) + wetSample * dryWet;
+            
+            // FINAL HARD LIMIT
+            output = juce::jlimit(-1.0f, 1.0f, output);
+            
+            dryData[sample] = output;
         }
     }
 }

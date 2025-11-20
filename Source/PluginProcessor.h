@@ -5,6 +5,89 @@
 
 #include <JuceHeader.h>
 
+//==============================================================================
+// Delay Line - Simple circular buffer with interpolation
+//==============================================================================
+class DelayLine
+{
+public:
+    void prepare(double sampleRate, float maxDelaySeconds)
+    {
+        int bufferSize = (int)(sampleRate * maxDelaySeconds) + 1;
+        buffer.setSize(1, bufferSize);
+        buffer.clear();
+        writePosition = 0;
+        this->sampleRate = sampleRate;
+    }
+    
+    void clear()
+    {
+        buffer.clear();
+        writePosition = 0;
+    }
+    
+    void writeSample(float sample)
+    {
+        buffer.setSample(0, writePosition, sample);
+        writePosition = (writePosition + 1) % buffer.getNumSamples();
+    }
+    
+    // Read with linear interpolation
+    float readSample(float delayInSamples)
+    {
+        float readPos = writePosition - delayInSamples;
+        while (readPos < 0)
+            readPos += buffer.getNumSamples();
+        
+        int readPos1 = (int)readPos;
+        int readPos2 = (readPos1 + 1) % buffer.getNumSamples();
+        float frac = readPos - readPos1;
+        
+        float sample1 = buffer.getSample(0, readPos1);
+        float sample2 = buffer.getSample(0, readPos2);
+        
+        return sample1 + frac * (sample2 - sample1);
+    }
+    
+private:
+    juce::AudioBuffer<float> buffer;
+    int writePosition = 0;
+    double sampleRate = 44100.0;
+};
+
+//==============================================================================
+// Simple LFO for modulation
+//==============================================================================
+class SimpleLFO
+{
+public:
+    void prepare(double sampleRate)
+    {
+        this->sampleRate = sampleRate;
+        phase = 0.0f;
+    }
+    
+    void setFrequency(float hz)
+    {
+        increment = (hz * juce::MathConstants<float>::twoPi) / (float)sampleRate;
+    }
+    
+    float getNextSample()
+    {
+        float value = std::sin(phase);
+        phase += increment;
+        if (phase >= juce::MathConstants<float>::twoPi)
+            phase -= juce::MathConstants<float>::twoPi;
+        return value;
+    }
+    
+private:
+    double sampleRate = 44100.0;
+    float phase = 0.0f;
+    float increment = 0.0f;
+};
+
+//==============================================================================
 class ClaritizerAudioProcessor : public juce::AudioProcessor
 {
 public:
@@ -39,18 +122,45 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
     
+    // Chorus module configuration (series, pre-delays)
+    struct ChorusConfig
+    {
+        float timeMs;           // Chorus delay time (10-50ms typical)
+        float feedback;         // Light feedback (0.0-0.3)
+        float modDepth;         // LFO modulation depth in ms
+        float modRate;          // LFO rate in Hz
+        float mix;              // Chorus wet amount
+    };
+    
+    // Main delay configuration (parallel)
+    struct DelayConfig
+    {
+        float baseTimeMs;       // Base delay time (before TIME knob scaling)
+        float feedback;         // Feedback amount (0.0 - 0.95)
+        float modDepth;         // LFO modulation depth in ms
+        float modRate;          // LFO rate in Hz
+        float mix;              // Output mix (0.0 = muted, 1.0 = full)
+        bool reverse;           // Reverse delay effect (placeholder for now)
+    };
+    
+    // Reverb module configuration (series diffusion network, post-delays)
+    struct ReverbConfig
+    {
+        float delay1Time;       // First delay time in ms
+        float delay2Time;       // Second delay time in ms
+        float delay3Time;       // Third delay time in ms
+        float delay4Time;       // Fourth delay time in ms
+        float sharedFeedback;   // Shared feedback for all 4 delays
+        float mix;              // Reverb wet/dry mix
+    };
+    
+    // Complete mode configuration
     struct ModeConfig
     {
-        float delayTimeBase;      // Base delay time in seconds
-        float feedbackAmount;     // Delay feedback (0.0 - 0.8)
-        float chorusDepth;        // Chorus modulation depth in ms
-        float chorusRate;         // Chorus LFO rate in Hz
-        float reverbSize;         // Reverb room size (0.0 - 1.0)
-        float reverbDamping;      // Reverb damping (0.0 - 1.0)
-        float reverbWet;          // Reverb wet amount (0.0 - 1.0)
-        float bitCrushAmount;     // Bitcrush intensity (1 = none, 16 = heavy)
-        float noiseModAmount;     // Noise modulation depth in ms
-        float noiseModSpeed;      // Noise smoothing (0.99 = slow, 0.9999 = fast)
+        ChorusConfig chorus;
+        DelayConfig delay1;
+        DelayConfig delay2;
+        ReverbConfig reverb;
     };
 
     // Parameters
@@ -69,43 +179,30 @@ private:
     std::atomic<float>* toneParam = nullptr;
     std::atomic<float>* modeParam = nullptr;
 
-    // Delay buffers (stereo)
-    juce::AudioBuffer<float> delayBufferLeft;
-    juce::AudioBuffer<float> delayBufferRight;
-    int delayWritePosition = 0;
+    // Chorus module (stereo)
+    DelayLine chorusLeft, chorusRight;
+    SimpleLFO chorusLFOLeft, chorusLFORight;
     
-    // White noise generator for modulation
-    juce::Random noiseGenerator;
-    float smoothedNoiseLeft = 0.0f;
-    float smoothedNoiseRight = 0.0f;
+    // 2 parallel main delays (stereo)
+    DelayLine delay1Left, delay1Right;
+    DelayLine delay2Left, delay2Right;
+    SimpleLFO lfo1Left, lfo1Right;
+    SimpleLFO lfo2Left, lfo2Right;
     
-    // Chorus/modulation LFO
-    float lfoPhase = 0.0f;
-    float lfoPhaseRight = 0.0f;
+    // Reverb module - 4 series delays (stereo)
+    DelayLine reverb1Left, reverb1Right;
+    DelayLine reverb2Left, reverb2Right;
+    DelayLine reverb3Left, reverb3Right;
+    DelayLine reverb4Left, reverb4Right;
     
-    // Bitcrusher state
-    float lastCrushedSampleLeft = 0.0f;
-    float lastCrushedSampleRight = 0.0f;
-    int crushCounterLeft = 0;
-    int crushCounterRight = 0;
-    
-    // Reverb
-    juce::dsp::Reverb reverb;
+    // Tone filter
+    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
+                                   juce::dsp::IIR::Coefficients<float>> toneFilter;
     juce::dsp::ProcessSpec spec;
-    
-    // Filters for tone control
-    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> lowPassFilter;
-    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> highPassFilter;
 
-    // Mode configuration structure
-    
-    
-
-    
     // Helper methods
     ModeConfig getModeConfig(int mode);
-    float getModulatedDelayTime(float baseTime, float noiseValue, float lfoValue, const ModeConfig& config);
-    float applyBitcrush(float sample, float& lastCrushedSample, int& counter, int crushRate);
+    float softClip(float sample);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ClaritizerAudioProcessor)
 };

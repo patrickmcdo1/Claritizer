@@ -8,7 +8,7 @@ class TransparentSlider : public juce::Slider
 public:
     void paint(juce::Graphics& g) override
     {
-        // Intentionally empty
+        // Intentionally empty - no rendering
     }
 };
 
@@ -29,7 +29,7 @@ class ClaritizerLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
     ClaritizerLookAndFeel()
-     {
+    {
         setColour(juce::Slider::thumbColourId, juce::Colours::white);
         setColour(juce::Slider::trackColourId, juce::Colour(0xff9dc3e6));
         setColour(juce::Slider::backgroundColourId, juce::Colours::transparentBlack);
@@ -60,7 +60,6 @@ public:
     {
         auto bounds = button.getLocalBounds().toFloat();
         
-        // Draw border with gradient (white to mode color)
         juce::ColourGradient borderGradient(
             juce::Colours::white, bounds.getX(), bounds.getY(),
             currentModeColor, bounds.getX(), bounds.getBottom(),
@@ -83,7 +82,6 @@ public:
         auto bounds = button.getLocalBounds();
         if (button.getToggleState())
         {
-            // Draw text with gradient when toggled (white to mode color)
             juce::ColourGradient textGradient(
                 juce::Colours::white, bounds.getCentreX(), bounds.getY(),
                 currentModeColor, bounds.getCentreX(), bounds.getBottom(),
@@ -103,7 +101,7 @@ public:
     float buttonFontSize = 36.0f;
     
 private:
-    juce::Colour currentModeColor = juce::Colour(0xff7ba5d1); // Default to Mode A blue
+    juce::Colour currentModeColor = juce::Colour(0xff7ba5d1);
 };
 
 class ClaritizerAudioProcessorEditor : public juce::AudioProcessorEditor,
@@ -121,7 +119,6 @@ private:
     ClaritizerAudioProcessor& audioProcessor;
     ClaritizerLookAndFeel customLookAndFeel;
     
-    // Debug panel viewport for scrolling
     juce::Viewport debugViewport;
     juce::Component debugContainer;
     
@@ -133,87 +130,28 @@ private:
     TransparentButton modeCButton;
     TransparentButton modeDButton;
     
-    // DEBUG SLIDERS - comprehensive UI controls
     bool showDebug = true;
-    bool uiSectionExpanded = false;  // Collapsed by default
-    bool audioProcessingSectionExpanded = true;  // Expanded by default
-    juce::TextButton uiSectionButton;
-    juce::TextButton audioProcessingSectionButton;
     
-    // Clarity slider controls
-    juce::Slider debugClaritySliderX, debugClaritySliderY;
-    juce::Slider debugClarityTrackWidth, debugClarityTrackHeight;
-    juce::Slider debugClarityThumbW, debugClarityThumbH;
-    juce::Label debugLabel1, debugLabel2, debugLabel3, debugLabel4, debugLabel5, debugLabel6;
-    
-    // Knob controls
-    juce::Slider debugTimeKnobX, debugTimeKnobY;
-    juce::Slider debugToneKnobX, debugToneKnobY;
-    juce::Slider debugKnobRadius, debugKnobBorderThickness, debugKnobArcThickness;
-    juce::Slider debugKnobSpacing;
-    juce::Label debugLabel7, debugLabel8, debugLabel9, debugLabel10, debugLabel11, debugLabel12, debugLabel13, debugLabel14;
-    
-    // Knob label controls
-    juce::Slider debugTimeLabelX, debugTimeLabelY, debugTimeLabelW, debugTimeLabelH;
-    juce::Slider debugToneLabelX, debugToneLabelY, debugToneLabelW, debugToneLabelH;
-    juce::Slider debugLabelFontSize;
-    juce::Label debugLabel15, debugLabel16, debugLabel17, debugLabel18, debugLabel19, debugLabel20;
-    juce::Label debugLabel21, debugLabel22, debugLabel23;
-    
-    // Button controls
-    juce::Slider debugButtonX, debugButtonY, debugButtonW, debugButtonH, debugButtonSpacing;
-    juce::Slider debugButtonBorderThickness, debugButtonFontSize;
-    juce::Label debugLabel24, debugLabel25, debugLabel26, debugLabel27, debugLabel28;
-    juce::Label debugLabel29, debugLabel30;
-    
-    // Title controls
-    juce::Slider debugTitleX, debugTitleY, debugTitleW, debugTitleH, debugTitleFontSize;
-    juce::Label debugLabel31, debugLabel32, debugLabel33, debugLabel34, debugLabel35;
-    
-    // Border/edge controls
-    juce::Slider debugOuterBorderThickness;
-    juce::Slider debugPluginWidth;
-    juce::Label debugLabel36, debugLabel37;
-    
-    // Noise controls
-    juce::Slider debugNoiseOpacity, debugNoisePixelSize;
-    juce::Label debugLabel38, debugLabel39;
-    int noisePixelSize = 1;
-    
-    // Knob tick mark controls
-    juce::Slider debugKnobTickLength, debugKnobTickThickness, debugKnobTickStartRadius;
-    juce::Label debugLabel40, debugLabel41, debugLabel42;
-    float knobTickLength = 20.0f;
-    float knobTickThickness = 10.0f;
-    float knobTickStartRadius = 35.0f;
-    
-    // Audio processing debug sliders - Mode A
-    juce::Slider debugModeA_DelayTime, debugModeA_Feedback, debugModeA_ChorusDepth, debugModeA_ChorusRate;
-    juce::Slider debugModeA_ReverbSize, debugModeA_ReverbDamping, debugModeA_ReverbWet;
-    juce::Slider debugModeA_BitCrush, debugModeA_NoiseModAmount, debugModeA_NoiseModSpeed;
+    // MODE A DEBUG SLIDERS - NEW ARCHITECTURE (23 total)
+    // Chorus (5 params)
+    juce::Slider debugModeA_ChorusTime, debugModeA_ChorusFeedback, debugModeA_ChorusModDepth;
+    juce::Slider debugModeA_ChorusModRate, debugModeA_ChorusMix;
     juce::Label debugLabelA1, debugLabelA2, debugLabelA3, debugLabelA4, debugLabelA5;
-    juce::Label debugLabelA6, debugLabelA7, debugLabelA8, debugLabelA9, debugLabelA10;
     
-    // Audio processing debug sliders - Mode B
-    juce::Slider debugModeB_DelayTime, debugModeB_Feedback, debugModeB_ChorusDepth, debugModeB_ChorusRate;
-    juce::Slider debugModeB_ReverbSize, debugModeB_ReverbDamping, debugModeB_ReverbWet;
-    juce::Slider debugModeB_BitCrush, debugModeB_NoiseModAmount, debugModeB_NoiseModSpeed;
-    juce::Label debugLabelB1, debugLabelB2, debugLabelB3, debugLabelB4, debugLabelB5;
-    juce::Label debugLabelB6, debugLabelB7, debugLabelB8, debugLabelB9, debugLabelB10;
+    // Delay 1 (6 params)
+    juce::Slider debugModeA_D1Time, debugModeA_D1Feedback, debugModeA_D1ModDepth;
+    juce::Slider debugModeA_D1ModRate, debugModeA_D1Mix, debugModeA_D1Reverse;
+    juce::Label debugLabelA6, debugLabelA7, debugLabelA8, debugLabelA9, debugLabelA10, debugLabelA11;
     
-    // Audio processing debug sliders - Mode C
-    juce::Slider debugModeC_DelayTime, debugModeC_Feedback, debugModeC_ChorusDepth, debugModeC_ChorusRate;
-    juce::Slider debugModeC_ReverbSize, debugModeC_ReverbDamping, debugModeC_ReverbWet;
-    juce::Slider debugModeC_BitCrush, debugModeC_NoiseModAmount, debugModeC_NoiseModSpeed;
-    juce::Label debugLabelC1, debugLabelC2, debugLabelC3, debugLabelC4, debugLabelC5;
-    juce::Label debugLabelC6, debugLabelC7, debugLabelC8, debugLabelC9, debugLabelC10;
+    // Delay 2 (6 params)
+    juce::Slider debugModeA_D2Time, debugModeA_D2Feedback, debugModeA_D2ModDepth;
+    juce::Slider debugModeA_D2ModRate, debugModeA_D2Mix, debugModeA_D2Reverse;
+    juce::Label debugLabelA12, debugLabelA13, debugLabelA14, debugLabelA15, debugLabelA16, debugLabelA17;
     
-    // Audio processing debug sliders - Mode D
-    juce::Slider debugModeD_DelayTime, debugModeD_Feedback, debugModeD_ChorusDepth, debugModeD_ChorusRate;
-    juce::Slider debugModeD_ReverbSize, debugModeD_ReverbDamping, debugModeD_ReverbWet;
-    juce::Slider debugModeD_BitCrush, debugModeD_NoiseModAmount, debugModeD_NoiseModSpeed;
-    juce::Label debugLabelD1, debugLabelD2, debugLabelD3, debugLabelD4, debugLabelD5;
-    juce::Label debugLabelD6, debugLabelD7, debugLabelD8, debugLabelD9, debugLabelD10;
+    // Reverb (6 params)
+    juce::Slider debugModeA_Rev1Time, debugModeA_Rev2Time, debugModeA_Rev3Time;
+    juce::Slider debugModeA_Rev4Time, debugModeA_RevFeedback, debugModeA_RevMix;
+    juce::Label debugLabelA18, debugLabelA19, debugLabelA20, debugLabelA21, debugLabelA22, debugLabelA23;
     
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> clarityAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> timeAttachment;
@@ -229,6 +167,7 @@ private:
     };
 
     float noiseOpacity = 0.1f;
+    int noisePixelSize = 1;
 
     juce::Slider modeSlider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> modeAttachment;
